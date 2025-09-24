@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MyToken DApp</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>🚀 MyToken DApp</h1>
+
+    <div class="card">
+      <h2>Wallet Info</h2>
+      <p><strong>Connected Account:</strong> <span id="account">Not connected</span></p>
+      <p><strong>Balance:</strong> <span id="balance">0</span> MTK</p>
+      <button id="connectBtn">Connect Wallet</button>
+    </div>
+
+    <div class="card">
+      <h2>Transfer Tokens</h2>
+      <input type="text" id="toAddress" placeholder="Recipient Address">
+      <input type="number" id="amount" placeholder="Amount">
+      <button id="transferBtn">Send Tokens</button>
+      <p id="status"></p>
+    </div>
+  </div>
+
+  <script>
+    // Replace with your contract ABI + address after migration
+    const contractABI = [
+      {
+        "inputs":[{"internalType":"uint256","name":"_initialSupply","type":"uint256"}],
+        "stateMutability":"nonpayable","type":"constructor"
+      },
+      {
+        "anonymous":false,
+        "inputs":[
+          {"indexed":true,"internalType":"address","name":"from","type":"address"},
+          {"indexed":true,"internalType":"address","name":"to","type":"address"},
+          {"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}
+        ],
+        "name":"Transfer","type":"event"
+      },
+      {"inputs":[],"name":"decimals","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"symbol","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"address","name":"_to","type":"address"},{"internalType":"uint256","name":"_value","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"success","type":"bool"}],"stateMutability":"nonpayable","type":"function"}
+    ];
+
+    const contractAddress = "YOUR_DEPLOYED_CONTRACT_ADDRESS"; // replace after migrate
+
+    let web3;
+    let contract;
+    let account;
+
+    async function connectWallet() {
+      if (window.ethereum) {
+        web3 = new Web3(window.ethereum);
+        await window.ethereum.request({ method: "eth_requestAccounts" });
+        const accounts = await web3.eth.getAccounts();
+        account = accounts[0];
+        document.getElementById("account").innerText = account;
+
+        contract = new web3.eth.Contract(contractABI, contractAddress);
+
+        updateBalance();
+      } else {
+        alert("MetaMask not found. Please install it.");
+      }
+    }
+
+    async function updateBalance() {
+      const balance = await contract.methods.balanceOf(account).call();
+      const decimals = await contract.methods.decimals().call();
+      const humanReadable = balance / (10 ** decimals);
+      document.getElementById("balance").innerText = humanReadable;
+    }
+
+    async function transferTokens() {
+      const to = document.getElementById("toAddress").value;
+      const amount = document.getElementById("amount").value;
+      const decimals = await contract.methods.decimals().call();
+      const sendAmount = amount * (10 ** decimals);
+
+      document.getElementById("status").innerText = "⏳ Sending...";
+
+      try {
+        await contract.methods.transfer(to, sendAmount).send({ from: account });
+        document.getElementById("status").innerText = "✅ Transfer Successful!";
+        updateBalance();
+      } catch (err) {
+        console.error(err);
+        document.getElementById("status").innerText = "❌ Transfer Failed!";
+      }
+    }
+
+    document.getElementById("connectBtn").addEventListener("click", connectWallet);
+    document.getElementById("transferBtn").addEventListener("click", transferTokens);
+  </script>
+</body>
+</html>
